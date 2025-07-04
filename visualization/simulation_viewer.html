@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USB传播模拟可视化 - 无底图模式</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #ecf0f1;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            color: #3498db;
+            text-shadow: 0 0 15px rgba(52, 152, 219, 0.7);
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: #bdc3c7;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 1600px;
+            margin: 0 auto;
+            gap: 20px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        
+        @media (max-width: 1000px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .map-container {
+            background: rgba(25, 42, 60, 0.7);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        
+        #map {
+            height: 70vh;
+            width: 100%;
+            background: #162b3d;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: rgba(30, 45, 60, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        
+        .slider-container {
+            margin-bottom: 25px;
+        }
+        
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .slider-title {
+            font-size: 1.2rem;
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        #day-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2ecc71;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+        }
+        
+        #day-slider {
+            width: 100%;
+            height: 12px;
+            background: #34495e;
+            border-radius: 10px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        #day-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.7);
+            border: 2px solid white;
+        }
+        
+        .button-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        button {
+            flex: 1;
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .stats-panel {
+            background: rgba(30, 45, 60, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        
+        .stat-card {
+            background: rgba(25, 42, 60, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(30, 50, 70, 0.8);
+        }
+        
+        .stat-label {
+            color: #bdc3c7;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .stat-card:nth-child(2) .stat-value {
+            color: #e74c3c;
+        }
+        
+        .stat-card:nth-child(3) .stat-value {
+            color: #2ecc71;
+        }
+        
+        .stat-card:nth-child(4) .stat-value {
+            color: #f39c12;
+        }
+        
+        .legend {
+            background: rgba(25, 42, 60, 0.7);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        
+        .legend-title {
+            font-size: 1.2rem;
+            color: #3498db;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-color {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+        
+        .legend-label {
+            font-size: 0.9rem;
+            color: #ecf0f1;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px 20px 20px;
+            color: #7f8c8d;
+            font-size: 0.95rem;
+            margin-top: 20px;
+        }
+        
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            border-radius: 15px;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(52, 152, 219, 0.3);
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #3498db;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>USB传播模拟可视化</h1>
+            <p class="subtitle">无底图模式 - 纯几何展示 | 此可视化展示USB设备在建筑网络中的传播情况，无需外部地图服务</p>
+        </div>
+        
+        <div class="dashboard">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div class="loading-text">加载模拟数据中...</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="slider-container">
+                    <div class="slider-header">
+                        <div class="slider-title">模拟时间控制</div>
+                        <div id="day-display">Day 0</div>
+                    </div>
+                    <input type="range" id="day-slider" min="0" max="30" value="0">
+                    <div class="button-container">
+                        <button id="prev-day">
+                            <span>◀</span> 前一天
+                        </button>
+                        <button id="next-day">
+                            后一天 <span>▶</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-panel">
+                    <div class="stat-card">
+                        <div class="stat-label">感染建筑</div>
+                        <div id="infected-buildings" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">感染USB</div>
+                        <div id="infected-usb" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">总建筑</div>
+                        <div id="total-buildings" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">总USB</div>
+                        <div id="total-usb" class="stat-value">0</div>
+                    </div>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-title">感染程度图例</div>
+                    <div class="legend-grid">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #00bcd4;"></div>
+                            <div class="legend-label">1-5个</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #4caf50;"></div>
+                            <div class="legend-label">6-10个</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #ffeb3b;"></div>
+                            <div class="legend-label">11-20个</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #ff9800;"></div>
+                            <div class="legend-label">21-30个</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #ff5722;"></div>
+                            <div class="legend-label">31-50个</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #f44336;"></div>
+                            <div class="legend-label">50+个</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>USB传播模拟可视化系统 | 无底图模式 | 几何空间展示</p>
+            <p>基于 Leaflet.js 构建 | 模拟数据来自传播算法</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    <script src="simulation_viewer.js"></script>
+</body>
+</html>
